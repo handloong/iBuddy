@@ -54,10 +54,10 @@ const FILE_SPECIFIC_PAIRS = {
     ['"packageName": "dsh-desktop-next"', '"packageName": "dsh-desktop-beta"'],
   ],
   'src/data-directory.ts': [
-    ["join(userHome, '.dsh')", "join(userHome, '.dsh-beta')"],
+    ["join(userHome, '.ibuddy')", "join(userHome, '.ibuddy-beta')"],
   ],
   'tests/data-directory.spec.ts': [
-    ["join(user, '.dsh')", "join(user, '.dsh-beta')"],
+    ["join(user, '.ibuddy')", "join(user, '.ibuddy-beta')"],
   ],
   'src/native-ui/onboarding.tsx': [
     ['<span>NEXT</span>', '<span>BETA</span>'],

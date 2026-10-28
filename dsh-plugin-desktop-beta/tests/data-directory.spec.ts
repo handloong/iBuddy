@@ -11,7 +11,7 @@ afterEach(() => homes.splice(0).forEach(path => rmSync(path, { recursive: true, 
 
 it('prefers the in-app choice over DSH_DESKTOP_NEXT_HOME, which applies only without one, over the shared default', () => {
   const user = home(), locationRoot = home(), variable = home(), selected = home()
-  const shared = join(user, '.dsh-beta')
+  const shared = join(user, '.ibuddy-beta')
   expect(defaultDataDirectory(user)).toBe(shared)
   expect(readDataDirectory(locationRoot, undefined, user)).toEqual({ home: shared, source: 'default', fallback: shared })
   expect(readDataDirectory(locationRoot, variable, user)).toEqual({ home: variable, source: 'environment', fallback: variable })

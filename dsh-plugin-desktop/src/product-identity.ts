@@ -5,14 +5,14 @@ export const DESKTOP_RELEASE_IDENTITIES = Object.freeze({
     packageName: 'dsh-plugin-desktop',
     productName: 'DSH Desktop',
     appId: 'ai.deepseek.dsh.desktop',
-    homeDirectoryName: '.dsh',
+    homeDirectoryName: '.ibuddy',
   }),
   beta: Object.freeze({
     releaseChannel: 'beta' as const,
     packageName: 'dsh-plugin-desktop-beta',
     productName: 'DSH Desktop Beta',
     appId: 'ai.deepseek.dsh.desktop.beta',
-    homeDirectoryName: '.dsh-beta',
+    homeDirectoryName: '.ibuddy-beta',
   }),
 })
 
