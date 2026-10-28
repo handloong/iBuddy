@@ -1,11 +1,16 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [master]
-  push:
-    branches: [master]
+  # Local fork: pushes and pull requests run nothing. Start a run from the
+  # Actions tab (CI -> Run workflow); the `changes` job treats a manual run as
+  # a product change, so it always takes the full gate.
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to publish (for example v2.0.18). Leave empty to build only.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -185,6 +190,15 @@ jobs:
           DSH_WINDOWS_PACKAGE_COMPRESSION: store
           DSH_WINDOWS_REUSE_UNPACKED: '1'
         run: yarn workspace ${{ matrix.workspace }} dist:win-portable
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-windows
+          path: |
+            ${{ matrix.workspace }}/dist/*.exe
+            ${{ matrix.workspace }}/dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
 
   # macOS-only universal packaging smoke on a real macOS runner: the signed
   # release is built manually on a credentialed machine, so an unsigned DMG
@@ -239,6 +253,15 @@ jobs:
           DSH_PACKAGE_CHECK_ALREADY_RAN: '1'
           DSH_LINUX_PACKAGE_COMPRESSION: store
         run: yarn workspace ${{ matrix.workspace }} dist:linux
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-linux
+          path: |
+            ${{ matrix.workspace }}/dist/*.AppImage
+            ${{ matrix.workspace }}/dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
 
   desktop-macos:
     needs: changes
@@ -292,6 +315,13 @@ jobs:
           DSH_MAC_SMOKE_ARCH: ${{ github.event_name == 'pull_request' && 'arm64' || 'universal' }}
           DSH_MAC_PACKAGE_COMPRESSION: store
         run: yarn workspace ${{ matrix.workspace }} dist:mac-smoke
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-macos
+          path: ${{ matrix.workspace }}/dist/mac-smoke/*.dmg
+          if-no-files-found: error
+          retention-days: 7
 
   # Upstream toolchain smoke: the portable-shell scripts must resolve the
   # pinned submodule's own Yarn/pnpm release on Windows.
@@ -310,3 +340,31 @@ jobs:
           node-version: 22.23.2
       - run: corepack enable
       - run: yarn upstream:version
+
+  # Manual only: collects the three platform artifacts and attaches them to a
+  # GitHub Release. Runs only when the dispatch form supplied a tag, so a plain
+  # manual build never publishes anything. `contents: write` is scoped to this
+  # job; every other job keeps the workflow-level read-only token.
+  release:
+    needs: [desktop-windows, desktop-linux, desktop-macos]
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+      - name: Create the release and attach every artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; adding assets to it."
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes "Unsigned local build. Windows shows a SmartScreen prompt; the macOS DMG is not notarized, so Gatekeeper must be bypassed manually."
+          fi
+          find artifacts -type f -print0 | xargs -0 -r -n1 gh release upload "$TAG" --clobber
